@@ -1,0 +1,96 @@
+﻿Sample_ID,ANONYMIZED_NAME,Sample,Sex,Genotype,Housing,Box
+DMG2000879,W12_mouse160 BOX1.1 faeces,Sample_1,Female,WT,SH,1.1
+DMG2000880,W12_mouse161 BOX1.1 faeces,Sample_2,Female,WT,SH,1.1
+DMG2000881,W12_mouse163 BOX1.1 faeces,Sample_3,Female,WT,SH,1.1
+DMG2000882,W12_mouse167 BOX1.1 faeces,Sample_4,Female,WT,SH,1.1
+DMG2000883,W12_mouse121 BOX2.1 faeces,Sample_5,Female,WT,SH,2.1
+DMG2000884,W12_mouse122 BOX2.1 faeces,Sample_6,Female,WT,SH,2.1
+DMG2000885,W12_mouse129 BOX2.1 faeces,Sample_7,Female,WT,SH,2.1
+DMG2000886,W12_mouse2 BOX3.1 faeces,Sample_8,Female,WT,SH,3.1
+DMG2000887,W12_mouse10 BOX13 faeces,Sample_9,Male,HD,SH,13
+DMG2000888,W12_mouse29 BOX17 faeces,Sample_10,Male,HD,EE,17
+DMG2000889,W12_mouse164 BOX5.1 faeces,Sample_11,Female,WT,EE,5.1
+DMG2000890,W12_mouse191 BOX5.1 faeces,Sample_12,Female,WT,EE,5.1
+DMG2000891,W12_mouse196 BOX5.1 faeces,Sample_13,Female,WT,EE,5.1
+DMG2000892,W12_mouse130 BOX6.1 faeces,Sample_14,Female,WT,EE,6.1
+DMG2000893,W12_mouse21 BOX6.1 faeces,Sample_15,Female,WT,EE,6.1
+DMG2000894,W12_mouse23 BOX6.1 faeces,Sample_16,Female,WT,EE,6.1
+DMG2000895,W12_mouse15 BOX7.1 faeces,Sample_17,Female,WT,EE,7.1
+DMG2000896,W12_mouse63 BOX7.1 faeces,Sample_18,Female,WT,EE,7.1
+DMG2000897,W12_mouse14 BOX13 faeces,Sample_19,Male,HD,SH,13
+DMG2000898,W12_mouse24 BOX9.1 faeces,Sample_20,Female,WT,EX,9.1
+DMG2000899,W12_mouse33 BOX9.1 faeces,Sample_21,Female,WT,EX,9.1
+DMG2000900,W12_mouse34 BOX9.1 faeces,Sample_22,Female,WT,EX,9.1
+DMG2000901,W12_mouse44 BOX10.1 faeces,Sample_23,Female,WT,EX,10.1
+DMG2000902,W12_mouse5 BOX23 faeces,Sample_24,Male,HD,EX,23
+DMG2000903,W12_mouse45 BOX10.1 faeces,Sample_25,Female,WT,EX,10.1
+DMG2000904,W12_mouse48 BOX19 faeces,Sample_26,Male,HD,EE,19
+DMG2000905,W12_mouse52 BOX10.1 faeces,Sample_27,Female,WT,EX,10.1
+DMG2000906,W12_mouse54 BOX11.1 faeces,Sample_28,Female,WT,EX,11.1
+DMG2000907,W12_mouse70 BOX11.1 faeces,Sample_29,Female,WT,EX,11.1
+DMG2000908,W12_mouse19 BOX23 faeces,Sample_30,Male,HD,EX,23
+DMG2000909,W12_mouse137 BOX13 faeces,Sample_31,Male,HD,SH,13
+DMG2000910,W12_mouse62 BOX18 faeces,Sample_32,Male,HD,EE,18
+DMG2000911,W12_mouse165 BOX13.1 faeces,Sample_33,Female,HD,SH,13.1
+DMG2000912,W12_mouse166 BOX13.1 faeces,Sample_34,Female,HD,SH,13.1
+DMG2000913,W12_mouse1 BOX14.1 faeces,Sample_35,Female,HD,SH,14.1
+DMG2000914,W12_mouse131 BOX14.1 faeces,Sample_36,Female,HD,SH,14.1
+DMG2000915,W12_mouse132 BOX14.1 faeces,Sample_37,Female,HD,SH,14.1
+DMG2000916,W12_mouse133 BOX14.1 faeces,Sample_38,Female,HD,SH,14.1
+DMG2000917,W12_mouse13 BOX15.1 faeces,Sample_39,Female,HD,SH,15.1
+DMG2000918,W12_mouse35 BOX15.1 faeces,Sample_40,Female,HD,SH,15.1
+DMG2000919,W12_mouse47 BOX14 faeces,Sample_41,Male,HD,SH,14
+DMG2000920,W12_mouse192 BOX17.1 faeces,Sample_42,Female,HD,EE,17.1
+DMG2000921,W12_mouse81 BOX22 faeces,Sample_43,Male,HD,EX,22
+DMG2000922,W12_mouse20 BOX18.1 faeces,Sample_44,Female,HD,EE,18.1
+DMG2000923,W12_mouse25 BOX18.1 faeces,Sample_45,Female,HD,EE,18.1
+DMG2000924,W12_mouse61 BOX19.1 faeces,Sample_46,Female,HD,EE,19.1
+DMG2000925,W12_mouse94 BOX19.1 faeces,Sample_47,Female,HD,EE,19.1
+DMG2000926,W12_mouse95 BOX19.1 faeces,Sample_48,Female,HD,EE,19.1
+DMG2000927,W12_mouse108 BOX19.1 faeces,Sample_49,Female,HD,EE,19.1
+DMG2000928,W12_mouse43 BOX23 faeces,Sample_50,Male,HD,EX,23
+DMG2000929,W12_mouse4 BOX15 faeces,Sample_51,Male,HD,SH,15
+DMG2000930,W12_mouse58 BOX14 faeces,Sample_52,Male,HD,SH,14
+DMG2000931,W12_mouse65 BOX18 faeces,Sample_53,Male,HD,EE,18
+DMG2000932,W12_mouse80 BOX19 faeces,Sample_54,Male,HD,EE,19
+DMG2000933,W12_mouse104 BOX19 faeces,Sample_55,Male,HD,EE,19
+DMG2000934,W12_mouse49 BOX21 faeces,Sample_56,Male,HD,EX,21
+DMG2000935,W12_mouse76 BOX22 faeces,Sample_57,Male,HD,EX,22
+DMG2000936,W12_mouse60 BOX21 faeces,Sample_58,Male,HD,EX,21
+DMG2000937,W12_mouse59 BOX18 faeces,Sample_59,Male,HD,EE,18
+DMG2000938,W12_mouse16 BOX21.1 faeces,Sample_60,Female,HD,EX,21.1
+DMG2000939,W12_mouse18 BOX21.1 faeces,Sample_61,Female,HD,EX,21.1
+DMG2000940,W12_mouse2 BOX21.1 faeces,Sample_62,Female,HD,EX,21.1
+DMG2000941,W12_mouse43 BOX22.1 faeces,Sample_63,Female,HD,EX,22.1
+DMG2000942,W12_mouse55 BOX22.1 faeces,Sample_64,Female,HD,EX,22.1
+DMG2000943,W12_mouse78 BOX23.1 faeces,Sample_65,Female,HD,EX,23.1
+DMG2000944,W12_mouse91 BOX23.1 faeces,Sample_66,Female,HD,EX,23.1
+DMG2000945,W12_mouse109 BOX23.1 faeces,Sample_67,Female,HD,EX,23.1
+DMG2000946,W12_mouse8 BOX15 faeces,Sample_68,Male,HD,SH,15
+DMG2000947,W12_mouse12 BOX1 faeces,Sample_69,Male,WT,SH,1
+DMG2000948,W12_mouse125 BOX1 faeces,Sample_70,Male,WT,SH,1
+DMG2000949,W12_mouse127 BOX1 faeces,Sample_71,Male,WT,SH,1
+DMG2000950,W12_mouse73 BOX2 faeces,Sample_72,Male,WT,SH,2
+DMG2000951,W12_mouse83 BOX2 faeces,Sample_73,Male,WT,SH,2
+DMG2000952,W12_mouse88 BOX2 faeces,Sample_74,Male,WT,SH,2
+DMG2000953,W12_mouse73 BOX3 faeces,Sample_75,Male,WT,SH,3
+DMG2000954,W12_mouse110 BOX3 faeces,Sample_76,Male,WT,SH,3
+DMG2000955,W12_mouse57 BOX15 faeces,Sample_77,Male,HD,SH,15
+DMG2000956,W12_mouse13 BOX5 faeces,Sample_78,Male,WT,EE,5
+DMG2000957,W12_mouse134 BOX5 faeces,Sample_79,Male,WT,EE,5
+DMG2000958,W12_mouse136 BOX5 faeces,Sample_80,Male,WT,EE,5
+DMG2000959,W12_mouse103 BOX6 faeces,Sample_81,Male,WT,EE,6
+DMG2000960,W12_mouse110 BOX 6 faeces ,Sample_82,Male,WT,EE,6
+DMG2000961,W12_mouse7 BOX 7 faeces ,Sample_83,Male,WT,EE,7
+DMG2000962,W12_mouse20 BOX 7 faeces ,Sample_84,Male,WT,EE,7
+DMG2000963,W12_mouse55 BOX 7 faeces ,Sample_85,Male,WT,EE,7
+DMG2000964,W12_mouse38 BOX 17 faeces ,Sample_86,Male,HD,EE,17
+DMG2000965,W12_mouse15 BOX 9 faeces ,Sample_87,Male,WT,EX,9
+DMG2000966,W12_mouse22 BOX 9 faeces ,Sample_88,Male,WT,EX,9
+DMG2000967,W12_mouse28 BOX 9 faeces ,Sample_89,Male,WT,EX,9
+DMG2000968,W12_mouse111 BOX 10 faeces ,Sample_90,Male,WT,EX,10
+DMG2000969,W12_mouse126 BOX 10 faeces ,Sample_91,Male,WT,EX,10
+DMG2000970,W12_mouse59 BOX 11 faeces ,Sample_92,Male,WT,EX,11
+DMG2000971,W12_mouse60 BOX 11 faeces ,Sample_93,Male,WT,EX,11
+DMG2000972,W12_mouse97 BOX 11 faeces ,Sample_94,Male,WT,EX,11
+DMG2000973,W12_mouse5 BOX 21 faeces ,Sample_95,Male,HD,EX,21

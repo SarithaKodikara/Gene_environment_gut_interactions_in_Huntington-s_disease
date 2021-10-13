@@ -1,0 +1,905 @@
+---
+title: 'Do environmental interventions ameliorate gut dysbiosis in Huntington disease mice?'
+subtitle: "Data Analysis (16s)"
+author: 'Saritha Kodikara'
+#date: 'November 9, 2017'
+date: '\today'
+#params:
+ #shape: 16
+  #pch.levels: !r c(14, 16)
+  #logicals: TRUE
+#date: '`r format(Sys.time(), "%d %B, %Y")`'
+output:
+  pdf_document:
+    toc: true   # can remove
+    toc_depth: 3 # can remove
+    number_sections: true
+  highlight: zenburn
+header-includes:
+- \usepackage{fancyhdr}
+- \usepackage{mathtools}
+- \usepackage{xcolor, hyperref}
+- \usepackage{lipsum}
+- \usepackage{subfig}
+- \usepackage{float}
+- \setlength{\headheight}{34pt}
+- \setlength{\footskip}{25pt}
+- \pagestyle{fancy}
+- \renewcommand{\headrulewidth}{0.5pt}
+- \renewcommand{\footrulewidth}{0.5pt}
+- \lhead{\includegraphics[width=8cm,height=1cm]{logo-unimelb}}
+- \cfoot{\scriptsize School of Mathematics and Statistics, Melbourne Integrative Genomics \\ The University of Melbourne}
+- \rhead{\thepage}
+- \hypersetup{colorlinks   = true, linkcolor=blue, urlcolor  = blue}
+- \fancypagestyle{plain}{\pagestyle{fancy}}
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r global_options, include=FALSE}
+library(knitr)
+# global options to show by default the code, dump the figures into /Figures etc
+knitr::opts_chunk$set(dpi = 100, 
+                      echo=TRUE, 
+                      warning=FALSE, message=FALSE, eval = TRUE,
+                      fig.show=TRUE, fig.width= 5,fig.height= 5,fig.align='center', out.width = '50%', fig.path= 'Figures/')
+library(biomformat)
+library(dplyr)
+library(dada2)
+library(phyloseq)
+library(ggpubr)
+library(ggplot2)
+library(mixOmics)
+library(ggfortify)
+library(kableExtra)
+library(gghighlight)
+library(gtools)
+library(nlme)
+library(xlsx)
+library(stargazer)
+library(vegan)
+library(DECIPHER)
+library(ape)
+library(patchwork)
+```
+
+
+
+
+<!-- the {-} indicate that you do not wish to number this section -->
+# Executive Summary {-}
+- Taxonomy classification of the OTUs were done using the 'assigntaxonomy()' function in 'dada2' library using the reference database "silva_nr99_v138.1_wSpecies_train_set.fa.gz"
+(https://zenodo.org/record/4587955#.YH4rbS0RpKM). The results were saved to 'taxonomy.csv' file. 
+- sPLS-DA on the centered log-ratio (CLR) transformed data were used to identify microbial drivers discriminating particular housing conditions. 
+- There was no clear discrimination in housing when all mice were considered together, indicating that the majority of the variation in the data was not due to the housing condition.
+- When sPLS-DA was applied separately based on Sex and Genotype, it was found that the Bacteroidales, Lachnospirales, Oscillospirales were the main signatures that discriminate housing types ("SH", "EE", "EX").
+
+# Data preprocessing 
+
+- Data in 'DMGPR00078.biom' was read using the 'read_biom()' function in 'biomformat' library.
+- Filtered out the samples related to brain samples. ('DAMG_FM009 - Amplicon 16S Sample Metadata Template_EE Ex-HD & HD brain_CG.xlsx' excel file was used for this task).
+- Sample information in 'DAMG_FM009 - Amplicon 16S Sample Metadata Template_EE Ex-HD & HD brain_CG.xlsx' excel file related with the gut were saved in 'Gut sample information (DAMG_FM009).csv'.
+- Filtered the OTUs with zero counts across all samples. As a result 207 OTUs out of 5346 OTUs were removed
+
+
+```{r, echo=FALSE}
+##########Functions#######
+#plotLoading function modified to display full names with larger font size
+myplotLoading<-function(ploadings,name.var, Title,palette = c("#388ECC","#F68B33","#C2C2C2")){
+  newdf<-ploadings[,8:10]
+  dfm<-merge(name.var,newdf, by=0)
+  dfm<-dfm[order(abs(dfm$importance), decreasing = T),]
+  dfm$GroupContrib<-factor(dfm$GroupContrib ,  levels = c("SH","EE","EX"))
+  
+  plot<-ggbarplot(dfm, x = "Row.names", y = "importance",
+            fill = "GroupContrib",           # change fill color by mpg_level
+            color = "white",            # Set bar border colors to white
+            palette = palette,            # jco journal color palett. see ?ggpar
+            sort.val = "none",          # Sort the value in descending order
+            sort.by.groups = FALSE,     # Don't sort inside each group
+            x.text.angle = 90,          # Rotate vertically x axis texts
+            xlab = "Order",
+            ylab="",
+            title=Title,
+            legend.title = " ",
+            rotate = TRUE,
+            ggtheme = theme_bw())+scale_x_discrete(labels=dfm$Order) + 
+    theme(axis.text.y = element_text(size = 15),axis.text.x = element_text(size = 15),
+          axis.title = element_text(size = 18),
+          axis.line.x = element_line(colour = "black"),
+          legend.text = element_text(size = 15),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          axis.ticks.y = element_blank())  
+  
+  return(plot)
+}
+
+```
+
+```{r, echo=FALSE}
+raw_data<-read_biom("data/DMGPR00078.biom")
+#biom_data(raw_data)
+
+#Converting the data into matrix format
+  count_data<-as(biom_data(raw_data),"matrix")
+
+
+#Ordering the column names for easy comparison with excel file DAMG_FM009
+  count_data<-count_data[,order(colnames(count_data))]
+
+
+#Filtering out the counts related to brain sample (i.e. last 23 samples were removed)
+  gut_count_data<-count_data[,-(c(96:118))]
+  #colnames(gut_count_data)
+  #dim(gut_count_data)
+
+#Filtering OTUs that have 0 across all samples
+  filtered_gut_counts<-gut_count_data[rowSums(gut_count_data[,])>0,]
+  #dim(filtered_gut_counts)
+
+#seq<-rownames(filtered_gut_counts)
+#taxa_clasification <- assignTaxonomy(seq, "data/silva_nr99_v138.1_wSpecies_train_set.fa.gz", multithread=FALSE)
+#write.csv(taxa_clasification, "Data/taxonomy.csv")
+
+#Converting the data to be recognized by phyloseq’s functions and methods
+
+  otumat = filtered_gut_counts
+  rownames(otumat) <- paste0("OTU_", 1:nrow(otumat))
+  colnames(otumat) <- paste0("Sample_", 1:ncol(otumat))
+  
+  taxonomy<-read.csv( "Data/taxonomy.csv")
+  taxmat = as.matrix(taxonomy[,-1])
+  rownames(taxmat) <- rownames(otumat)
+  
+  OTU = otu_table(otumat, taxa_are_rows = TRUE)
+  TAX = tax_table(taxmat)
+  
+  physeq = phyloseq(OTU, TAX)
+  
+  ####Construct the phylogenetic tree####
+    
+      #seqs<-taxonomy$X
+      #names(seqs) <- rownames(taxmat) # This propagates to the tip labels of the tree
+      #alignment <- AlignSeqs(DNAStringSet(seqs), anchor=NA)
+      #phang.align <- phyDat(as(alignment, "matrix"), type="DNA")
+      #dm <- dist.ml(phang.align)
+      #treeNJ <- NJ(dm) # Note, tip order != sequence order
+      #fit = pml(treeNJ, data=phang.align) ## negative edges length changed to 0!
+      
+    
+      #fitGTR <- update(fit, k=4, inv=0.2)
+      #fitGTR <- optim.pml(fitGTR, model="GTR", optInv=TRUE, optGamma=TRUE,
+                        #rearrangement = "stochastic", control = pml.control(trace = 0))
+      #detach("package:phangorn", unload=TRUE)
+      ## Save an object to a file
+      #saveRDS(fitGTR, file = "fitGTR.rds")
+      ## Restore the object
+      fitGTR<-readRDS(file = "Data/fitGTR.rds")
+  
+  # Inclusing sample information
+    sample<-read.csv("Data/Gut sample information (DAMG_FM009).csv")[,-c(1:3)]
+    sample$Genotype<-factor(sample$Genotype, levels=c("WT","HD"))
+    sample$Housing <-factor(sample$Housing ,  levels = c("SH","EE","EX"))
+    sample$Sex<-factor(sample$Sex, levels=c("Female", "Male"))
+    sample$Box <-factor(sample$Box ,levels = c("1","1.1","2","2.1","3","3.1","5", 
+      "5.1","6","6.1","7","7.1","9","9.1","10","10.1","11","11.1","13","13.1","14",   
+      "14.1","15","15.1","17","17.1","18", "18.1","19","19.1","21" ,"21.1","22",
+      "22.1","23","23.1"),labels = c("A","a","B","b","C","c","D","d",
+      "E","e","F","f","G","g","H","h","I","i","J","j","K","k","L","l",
+      "M","m","N", "n","O","o","P","p","Q","q","R","r"), ordered = TRUE)
+    sample$Sex_Geno<-factor(paste0(sample$Sex,"_",sample$Genotype))
+    sampledata<-sample_data(data.frame(sample,row.names=sample_names(physeq)))
+
+  physeq_count_with_mit = phyloseq(OTU, TAX, sampledata, phy_tree(fitGTR$tree))
+  set.seed(711)
+  phy_tree(physeq_count_with_mit ) <- root(phy_tree(physeq_count_with_mit),
+    sample(taxa_names(physeq_count_with_mit), 1), resolve.root = TRUE)
+  #is.rooted(phy_tree(physeq_count_with_mit))
+  #Remove mitochondria----
+  MT1 <- subset_taxa(physeq_count_with_mit, Family == "Mitochondria")
+  MT1 <-  as(tax_table(MT1), "matrix")
+  MT1 <- MT1[, 5]
+  goodTaxa <- setdiff(taxa_names(physeq_count_with_mit), names(MT1))
+  physeq_count<- prune_taxa(goodTaxa, physeq_count_with_mit)
+  #physeq_count_clean
+  #----
+
+```
+\newpage
+
+# Composition barplots for relative abundance data
+
+```{r, echo=FALSE}
+#Relative abundance
+physeq_ra = transform_sample_counts(physeq_count, function(x) x/sum(x))
+ 
+```
+
+
+
+```{r ra_comp, echo = FALSE, fig.cap ='Microbial composition at Family level for each sample by its relative abundance',   out.width = "100%", fig.width=12, fig.height=12, fig.pos="H"}
+p<-plot_bar(physeq_ra, fill = "Family") + theme(legend.position = 'bottom')+facet_grid (~Housing+Genotype+Sex, scales = "free_x")
+x_order<-paste0("Sample_", 1:ncol(otumat))
+p$data$Sample <- factor(p$data$Sample, levels = x_order)
+print(p)
+```
+
+\newpage
+# Diversity
+
+## Alpha diversity
+- Following Kong et al.(2018), reads were rarefied to 15,000 reads to calculate several alpha- diversity metrics, including species richness (Observed), Shannon and Inverse Simpson metrics, using the ‘Phyloseq’ R package
+
+```{r, echo=FALSE}
+physeq.rarefied = rarefy_even_depth(physeq_count, rngseed=1, sample.size=15000, replace=F)
+
+#prune OTUs that are not present in any of the samples
+GP <- prune_taxa(taxa_sums(physeq.rarefied) > 0, physeq.rarefied)
+```
+
+```{r alpha_div, echo = FALSE, fig.cap =' Alpha diversity metrics including Observed (A), Shannon (B) and Inverse Simpson (InvSimpson) (C) indices were probed for the two genotypes among different housing conditions.',   out.width = "100%", fig.width=12, fig.height=12, fig.pos="H"}
+
+
+P1<-plot_richness(GP, x="Housing",measures=c("Observed"), color = "Sex")+facet_grid (~Genotype)
+P1$layers <- P1$layers[-1]
+P1<-P1+geom_point(position = position_dodge(width=0.75))+geom_boxplot(data = P1$data, aes(x = Housing, y = value, color = Sex), 
+                    alpha = 0.1)+ labs(y="Alpha Diversity- Observed")
+
+
+P2<-plot_richness(GP, x="Housing",measures=c("Shannon"), color = "Sex")+facet_grid (~Genotype)
+P2$layers <- P2$layers[-1]
+P2<-P2+geom_point(position = position_dodge(width=0.75))+geom_boxplot(data = P2$data, aes(x = Housing, y = value, color = Sex), 
+                    alpha = 0.1)+ labs(y="Alpha Diversity- Shannon")
+
+P3<-plot_richness(GP, x="Housing",measures=c("InvSimpson"), color = "Sex")+facet_grid (~Genotype)
+P3$layers <- P3$layers[-1]
+P3<-P3+geom_point(position = position_dodge(width=0.75))+geom_boxplot(data = P3$data, aes(x = Housing, y = value, color = Sex), 
+                    alpha = 0.1)+ labs(y="Alpha Diversity- Inverse Simpson")
+ggarrange( P1, P2, P3,  
+           labels = c("A", "B", "C"),
+           ncol = 3, nrow = 1)
+```
+
+- Figure \ref{fig:alpha_div} A, gives the species richness measure which represents the number of observed OTUs in a given 16s sample. Based on the boxplots it can be concluded that the lowest median richness value was observed in Males-'WT'-'EX' group.
+- Figure \ref{fig:alpha_div} B and C represent the Shannon's and Inverse Simpson diversity index, which takes into account both richness and the relative abundance of OTUs (i.e. evenness). For both these measures, HD group had high median evenness compared to its counterpart in 'WT'.
+
+### ANOVA- Alpha diversity
+
+- Based on the analysis of variance results, we can infer that there is a statistical difference in the alpha diversity among HD and WT.
+
+```{r, echo=FALSE}
+alpha_div<-estimate_richness(GP, measures = c("Observed","Shannon","InvSimpson"))
+alpha_div.df<-cbind(sample_data(GP)[,1:3],alpha_div)
+summary(aov(Observed~Housing, data=alpha_div.df))
+summary(aov(Shannon~Housing, data=alpha_div.df))
+summary(aov(InvSimpson~Housing, data=alpha_div.df))
+summary(aov(Observed~Sex, data=alpha_div.df))
+summary(aov(Shannon~Sex, data=alpha_div.df))
+summary(aov(InvSimpson~Sex, data=alpha_div.df))
+summary(aov(Observed~Genotype, data=alpha_div.df))
+summary(aov(Shannon~Genotype, data=alpha_div.df))
+summary(aov(InvSimpson~Genotype, data=alpha_div.df))
+```
+
+
+
+## Beta diversity
+
+### Bray-Curtis distance
+
+```{r beta_div, echo = FALSE, fig.cap =' PCoA: Bray-Curtis by Genotype, Housing and Sex',   out.width = "100%",fig.width=8, fig.height=6,  fig.pos="H"}
+bray_pcoa <- ordinate(
+  physeq = physeq_ra, 
+  method = "PCoA", 
+  distance = "bray"
+)
+
+p<-plot_ordination(
+  physeq = physeq_ra,
+  ordination = bray_pcoa,
+   color= "Housing",
+  shape ="Sex_Geno",
+  title = "PCoA: Bray-Curtis"
+  )
+p$layers <- p$layers[-1]
+p+scale_shape_manual(values =  c(16,1,17,2)) +scale_fill_discrete(c("#F8766D","#619CFF","#00BA38"))+ theme(text = element_text(size = 16)) + geom_point(size=4)
+```
+
+```{r echo=FALSE}
+  distBC = phyloseq::distance(physeq_ra, method = "bray")
+  vegan::adonis(distBC~ Genotype, data = data.frame(sample_data(physeq_ra)))
+  vegan::adonis(distBC ~ Housing, data = data.frame(sample_data(physeq_ra)))
+  vegan::adonis(distBC ~ Sex, data = data.frame(sample_data(physeq_ra)))
+```
+
+- In Figure \ref{fig:beta_div}, Bray-Curtis distance was calculates and used in principal coordinates analysis (PCoA) to compare the microbial composition in one environment to another. Although the results in this figure do not indicate strong clustering according to any factor variable (i.e. Housing, Sex and Genotype), Bray-Curtis distance was found to be statistically different in each factor.
+
+\newpage
+
+### Unweighted Unifrac distance
+
+```{r beta_div_unifrac, echo = FALSE, fig.cap =' PCoA: Unweighted Unifrac distance by Genotype, Housing and Sex',   out.width = "100%",fig.width=8, fig.height=6,  fig.pos="H"}
+distUF = UniFrac(physeq_ra, weighted = F, normalized = T, parallel = F)
+  ordUF = ordinate(physeq_ra, method = "PCoA", distance = distUF)
+  p<-plot_ordination(physeq_ra, ordUF, color = "Housing", shape = "Sex_Geno")+
+    ggtitle("Unweighted UniFrac PCoA")
+  p$layers <- p$layers[-1]
+  p+scale_shape_manual(values =  c(16,1,17,2)) +
+    scale_fill_discrete(c("#F8766D","#619CFF","#00BA38"))+ 
+    theme(text = element_text(size = 16)) + geom_point(size=4)
+```
+
+```{r echo=FALSE}
+  vegan::adonis(distUF ~ Genotype, data = data.frame(sample_data(physeq_ra)))
+  vegan::adonis(distUF ~ Housing, data = data.frame(sample_data(physeq_ra)))
+  vegan::adonis(distUF ~ Sex, data = data.frame(sample_data(physeq_ra)))
+
+```
+
+- In Figure \ref{fig:beta_div_unifrac}, unweighted UniFrac distance distance was calculates and used in principal coordinates analysis (PCoA) to compare the microbial composition in one environment to another. Compared to Bray-Curtis distance, the unweighted UniFrac distance accounts for the phylogenetic relationship between the OTUs. Using Adonis (Permutation multivariate ANOVA) from the ‘vegan’ R package, it was found that the distances were statistically different across factors as similar to Bray-Curtis distance.
+
+
+
+\newpage
+# Library size
+
+```{r, echo=FALSE}
+data.raw = data.frame(t(otumat))
+taxonomy.details = data.frame(taxmat)
+sample$Housing_Geno<-factor(paste0(sample$Housing,"_",sample$Genotype))
+indiv<-data.frame(sample,row.names=rownames(t(otumat)))
+Data.16S<-list(data.raw=data.raw+1, taxonomy.details=taxonomy.details, indiv=indiv)
+
+data.offset <- Data.16S$data.raw
+
+# check there are no zeroes in these offset data for
+# for CLR transfo
+#sum(which(data.offset == 0))  # ok!
+
+
+
+# function to perform pre-filtering
+low.count.removal = function(
+  data, # OTU count data frame of size n (sample) x p (OTU)
+  percent=0.01 # cutoff chosen
+){
+  keep.otu = which(colSums(data)*100/(sum(colSums(data))) > percent)
+  data.filter = data[,keep.otu]
+  return(list(data.filter = data.filter, keep.otu = keep.otu))
+}
+
+#dim(data.offset) 
+# call the function then apply on the offset data
+result.filter <- low.count.removal(data.offset, percent=0.01)
+
+# check the number of variables kept after filtering
+# in this particular case we had already filtered the data so no was change made, but from now on we will work with 'data.filter'
+#length(result.filter$keep.otu) 
+
+filter.data.raw<-result.filter$data.filter
+#lib.size <- apply(filter.data.raw, 1, sum)
+#barplot(lib.size)
+filter.taxonomy<-taxonomy.details[colnames(filter.data.raw),]
+
+filterOTU_16S<-list(filter.data.raw=filter.data.raw,
+                    filter.taxonomy=filter.taxonomy, indiv=indiv)
+```
+
+```{r bar_plot_lib_size, echo = FALSE, fig.cap ='Bar plot for library size per sample',  out.width = "100%", fig.width=12, fig.height=12, fig.pos="H"}
+lib.size <- data.frame(Lib.size=apply(data.raw, 1, sum))
+lib.size$Sample<-rownames(lib.size)
+ggplot( lib.size, aes( x=Sample,y = Lib.size)) +geom_bar( stat = "identity" )+ ggpubr::rotate_x_text() +xlab("Sample") + ylab("Library Size")+
+  gghighlight(min(Lib.size)< 20000,  label_key =Sample)
+```
+
+In Figure \ref{fig:bar_plot_lib_size}, the sum of all OTU counts per sample (i.e. library size) is represented in a barplot to identify any heterogeneous library sizes. Based on the results, 'Sample 65' has a relatively low library size. However, this sample was not removed from future analysis as there was no compelling reason to do so.
+
+
+\newpage
+# PCA
+```{r pca, echo = FALSE, fig.cap =' PCA plot with Housing, Sex and Genotype.',  out.width = "100%", fig.width=8, fig.height=6,  fig.pos="H"}
+pca.result <- pca(filterOTU_16S$filter.data.raw, logratio = 'CLR')
+plotIndiv(pca.result, group = filterOTU_16S$indiv$Housing, title = 'PCA plot', pch.levels =levels(filterOTU_16S$indiv$Sex_Geno), pch  = c(16,1,17,2), legend = TRUE,ind.names = FALSE,legend.title = 'Housing', legend.title.pch = "Gender_Genotype", col = c("#F8766D","#00BA38","#619CFF"), level.colors=levels(filterOTU_16S$indiv$Housing))
+```
+- Based on the PCA plot in \ref{fig:pca}, there is no clear separation among samples coming from different housing conditions.
+
+```{r pca_box, echo = FALSE, fig.cap =' PCA plot with cage effect.', out.width = "100%", fig.width=8, fig.height=8,  fig.pos="H"}
+plotIndiv(pca.result, group =filterOTU_16S$indiv$Box, title = 'PCA plot with Cage',  ind.names = filterOTU_16S$indiv$Box, cex = 1.5, style = "lattice")
+```
+- There seems to be mild cage effect as some cages (i.e. 'A', 'B') tends to cluster together.
+
+
+\newpage
+## PCA with filtered OTUs for females and Males separately 
+### Female
+- Used a pre-filtering step to remove OTUs separately for males and females for which the sum of counts are below 0.01\%. As a result for females there were 290 OTUs after the pre-filter and for males it was 304. There were 258 OTUs that were common to both sex.
+
+```{r echo= FALSE}
+
+indiv_female=indiv%>%filter(Sex=="Female")
+indiv_male=indiv%>%filter(Sex=="Male")
+data.raw_female=data.raw[rownames(indiv_female),]
+data.raw_male=data.raw[rownames(indiv_male),]
+taxonomy.female<-taxonomy.details[colnames(data.raw_female),]
+taxonomy.male<-taxonomy.details[colnames(data.raw_male),]
+
+
+data.offset.female <- data.raw_female+1
+data.offset.male <- data.raw_male+1
+
+result.filter.female <- low.count.removal(data.offset.female, percent=0.01)
+result.filter.male <- low.count.removal(data.offset.male, percent=0.01)
+
+filter.data.raw.female<-result.filter.female$data.filter
+filter.data.raw.male<-result.filter.male$data.filter
+
+filter.taxonomy.female<-taxonomy.details[colnames(filter.data.raw.female),]
+filter.taxonomy.male<-taxonomy.details[colnames(filter.data.raw.male),]
+
+filterOTU_16S.female.pca<-list(filter.data.raw=filter.data.raw.female,
+                        filter.taxonomy=filter.taxonomy.female, indiv=indiv_female)
+filterOTU_16S.male.pca<-list(filter.data.raw=filter.data.raw.male,
+                               filter.taxonomy=filter.taxonomy.male, indiv=indiv_male)
+
+
+pca.result.female <- pca(filterOTU_16S.female.pca$filter.data.raw, logratio = 'CLR')
+pca.result.male <- pca(filterOTU_16S.male.pca$filter.data.raw, logratio = 'CLR')
+
+```
+
+```{r pca_sex, fig.show='hold', echo = FALSE, fig.cap =' PCA plot grouped by sex', fig.ncol = 2, out.width='.48\\linewidth',  fig.pos="H"}
+plotIndiv(pca.result.female, group = filterOTU_16S.female.pca$indiv$Housing,  
+          pch=filterOTU_16S.female.pca$indiv$Genotype,title = 'PCA plot-Female', 
+          legend = TRUE, legend.title = "Housing", legend.title.pch = "Genotype", ellipse= TRUE)
+plotIndiv(pca.result.male, group = filterOTU_16S.male.pca$indiv$Housing,  
+          pch=filterOTU_16S.male.pca$indiv$Genotype,title = 'PCA plot-Male', 
+          legend = TRUE, legend.title = "Housing", legend.title.pch = "Genotype",ellipse= TRUE)
+
+```
+\newpage
+# sPLS-DA - Identifying signatures that discriminate Housing and Genotype (with 5 components)
+
+## Female
+
+```{r echo= FALSE}
+
+#Data.16S.filter.female<-list(filtered_female_data=filtered_female_data+1,
+                             #indiv_female=indiv_female,
+                             #taxonomy.female=taxonomy.female)
+Data.16S.filter.female=list(filtered_female_data=filterOTU_16S.female.pca$filter.data.ra,
+                            indiv_female=filterOTU_16S.female.pca$indiv,
+                             taxonomy.female=filterOTU_16S.female.pca$filter.taxonomy)
+Y=Data.16S.filter.female$indiv_female$Housing_Geno
+#summary(Y)
+X=Data.16S.filter.female$filtered_female_data
+#dim(X)
+
+set.seed(2543)
+tune.splsda.female<-  tune.splsda(X, Y, ncomp = 5, logratio = 'CLR', validation = 'Mfold', folds = 5,
+                                      progressBar = FALSE, test.keepX = seq(5,100,5),dist = 'max.dist', measure = "BER",
+                                      nrepeat = 10)
+#ncomp <- tune.splsda.female$choice.ncomp$ncomp # optimal number of components based on t-tests
+#ncomp
+ncomp <-5
+select.keepX <- tune.splsda.female$choice.keepX[1:ncomp]  # optimal number of variables to select
+#select.keepX
+#plot(tune.splsda.female_hd, col = color.jet(3))
+splsda.female <- splsda(X, Y, logratio = 'CLR', ncomp = ncomp, keepX = select.keepX)
+
+```
+
+```{r splsda_female, echo = FALSE,fig.show='hold', fig.cap ='Identification of OTU signatures associated with Housing and Genptype in Females using sPLS-DA',   out.width='.9\\linewidth', fig.pos="H"}
+plotIndiv(splsda.female,
+          group = Data.16S.filter.female$indiv_female$Housing_Geno, ind.names = FALSE,
+          ellipse = TRUE, legend = TRUE,
+          title = 'Comp 1 & 2')
+```
+
+
+
+
+## Male
+```{r echo= FALSE}
+
+#Data.16S.filter.male<-list(filtered_male_data=filtered_male_data+1,
+                            # indiv_male=indiv_male,
+                             #taxonomy.male=taxonomy.male)
+Data.16S.filter.male=list(filtered_male_data=filterOTU_16S.male.pca$filter.data.raw,
+                            indiv_male=filterOTU_16S.male.pca$indiv,
+                             taxonomy.male=filterOTU_16S.male.pca$filter.taxonomy)
+Y=Data.16S.filter.male$indiv_male$Housing_Geno
+#summary(Y)
+X=Data.16S.filter.male$filtered_male_data
+#dim(X)
+
+set.seed(2543)
+tune.splsda.male<-  tune.splsda(X, Y, ncomp = 5, logratio = 'CLR', validation = 'Mfold', folds = 5,
+                                      progressBar = FALSE, test.keepX = seq(5,100,5),dist = 'max.dist', measure = "BER",
+                                      nrepeat = 10)
+
+ncomp <-5
+select.keepX <- tune.splsda.male$choice.keepX[1:ncomp]  # optimal number of variables to select
+#select.keepX
+#plot(tune.splsda.female_hd, col = color.jet(3))
+splsda.male <- splsda(X, Y, logratio = 'CLR', ncomp = ncomp, keepX = select.keepX)
+
+```
+
+```{r splsda_male, echo = FALSE,fig.show='hold', fig.cap ='Identification of OTU signatures associated with Housing and Genptype in Males using sPLS-DA',   out.width='.9\\linewidth', fig.pos="H"}
+plotIndiv(splsda.male,
+          group = Data.16S.filter.male$indiv_male$Housing_Geno, ind.names = FALSE,
+          ellipse = TRUE, legend = TRUE,
+          title = 'Comp 1 & 2')
+```
+
+\textbf{Overall Error Rate (Mahalanobis distance)}
+```{r echo=FALSE}
+
+perf.plsda.female <- perf(splsda.female, validation = "Mfold", folds = 5,
+                         progressBar = FALSE, auc = TRUE, nrepeat = 10)
+error<-perf.plsda.female$error.rate$overall[5,3]
+sd<-perf.plsda.female$error.rate.sd$overall[5,3]
+Female<-c(Error=error, SD=sd)
+perf.plsda.male <- perf(splsda.male, validation = "Mfold", folds = 5,
+                         progressBar = FALSE, auc = TRUE, nrepeat = 10)
+error<-perf.plsda.male$error.rate$overall[5,3]
+sd<-perf.plsda.male$error.rate.sd$overall[5,3]
+Male<-c(Error=error, SD=sd)
+knitr::kable(rbind(Female,Male))
+```
+
+- There is no clear separation in Housing and genotype in both males and females. Thus, Sparse PLS discriminant analysis (sPLS-DA) from the ‘mixOmics’ package in R was used to identify signature of discriminative OTUs associated with Housing among different sex and genotype.
+
+\newpage
+# sPLS-DA - Identifying signatures that discriminate Housing (with 2 components)
+## Female- HD
+
+```{r echo= FALSE}
+female_hd.16S= Data.16S.filter.female$indiv%>%filter( Genotype=="HD")
+Y=female_hd.16S$Housing
+#summary(Y)
+X=Data.16S.filter.female$filtered_female_data[rownames(female_hd.16S),]
+#dim(X)
+
+set.seed(2543)
+tune.splsda.female_hd <-  tune.splsda(X, Y, ncomp = 3, logratio = 'CLR', validation = 'Mfold', folds = 5, 
+                                      progressBar = FALSE, test.keepX = seq(5,100,5),dist = 'max.dist', measure = "BER",
+                                      nrepeat = 10)
+ncomp <- 2
+select.keepX <- tune.splsda.female_hd$choice.keepX[1:ncomp]  # optimal number of variables to select
+#select.keepX
+#plot(tune.splsda.female_hd, col = color.jet(3))
+splsda.female_hd <- splsda(X, Y, logratio = 'CLR', ncomp = ncomp, keepX = select.keepX) 
+```
+
+```{r,echo=FALSE,fig.show='hide'}
+a<-plotIndiv(splsda.female_hd,
+          group = female_hd.16S$Housing,
+          ind.names = FALSE, 
+          ellipse = TRUE, legend = TRUE,
+          title = 'Comp 1 & 2',
+          size.xlabel = rel(1.5),
+          size.ylabel = rel(1.5),
+          size.axis = rel(1),
+          size.legend = rel(1.1),
+          size.legend.title = rel(0), style = "ggplot2")
+b <- a$graph
+p1<-b+scale_color_manual(breaks=c("SH","EE","EX"), values = c("#388ECC","#F68B33","#C2C2C2"))+
+  labs(color = "Group")+ scale_shape_manual(values = c(2, 3,1))+ guides(pch = FALSE) 
+```
+
+```{r splsda_female_hd, echo = FALSE,fig.show='hold', fig.cap ='Identification of OTU signatures associated with Housing type in Female HD using sPLS-DA',  out.width='.5\\linewidth', fig.pos="H"}
+p1
+```
+
+
+
+```{r splsda_female_hd_l, echo = FALSE, fig.cap ='Loadings of OTU signatures associated with Housing type in Female HD',  out.width='40%', fig.pos="H",fig.show='hold', fig.ncol=2, fig.height=10, fig.width=8}
+
+name.var<-Data.16S.filter.female$taxonomy.female[,c(4,5)]
+#otu_names[is.na(otu_names)] <- "X"
+#name.var<-paste(rownames(otu_names),"(",otu_names$Family,"_",otu_names$Genus,"_",otu_names$Species,")")
+comp1<-plotLoadings(splsda.female_hd, comp = 1, title = 'Loadings-comp 1', plot = FALSE,
+             contrib = 'max', method = 'median',  size.name =0.8,size.title=1)
+comp2<-plotLoadings(splsda.female_hd, comp = 2, title = 'Loadings-comp 2', max.name.length=50, plot = FALSE,
+             contrib = 'max', method = 'median', size.name = 1,size.title=1, ndisplay = 35)
+myplotLoading(comp1,name.var,"")
+myplotLoading(comp2,name.var,"")
+```
+
+- Figure \ref{fig:splsda_female_hd_l}, displays the loading weights for component 1 and 2, where colors indicate the housing condition for which the selected OTU has a maximal median value.
+\newpage
+```{r echo=FALSE}
+#A<-selectVar(splsda.female_hd, comp = 1)$name
+#kbl(Data.16S$taxonomy[A,-c(1,2,7)], caption = "Selected OTUs Female HD - Component 1", longtable = T)%>%kable_styling(bootstrap_options = c("striped", "hover", "condensed"), font_size = 7)
+```
+
+\newpage
+## Female- WT
+
+```{r echo= FALSE}
+female_wt.16S= Data.16S.filter.female$indiv%>%filter(Genotype=="WT")
+Y=female_wt.16S$Housing
+#summary(Y)
+X=Data.16S.filter.female$filtered_female_data[rownames(female_wt.16S),]
+#dim(X)
+
+
+set.seed(2543)
+tune.splsda.female_wt <-  tune.splsda(X, Y, ncomp = 3, logratio = 'CLR', validation = 'Mfold', folds = 5, 
+                                      progressBar = FALSE, test.keepX = seq(5,100,5),dist = 'max.dist', measure = "BER",
+                                      nrepeat = 10)
+ncomp <- 2
+select.keepX <- tune.splsda.female_wt$choice.keepX[1:ncomp]  # optimal number of variables to select
+#select.keepX
+#plot(tune.splsda.female_hd, col = color.jet(3))
+splsda.female_wt <- splsda(X, Y, logratio = 'CLR', ncomp = ncomp, keepX = select.keepX) 
+```
+
+```{r,echo=FALSE,fig.show='hide'}
+a<-plotIndiv(splsda.female_wt,
+             group = female_wt.16S$Housing,
+             ind.names = FALSE, 
+             ellipse = TRUE, legend = TRUE,
+             title = 'Comp 1 & 2',
+             size.xlabel = rel(1.5),
+             size.ylabel = rel(1.5),
+             size.axis = rel(1),
+             size.legend = rel(1.1),
+             size.legend.title = rel(0), style = "ggplot2")
+b <- a$graph
+p1<-b+scale_color_manual(breaks=c("SH","EE","EX"), values = c("#388ECC","#F68B33","#C2C2C2"))+
+  labs(color = "Group")+ scale_shape_manual(values = c(2, 3,1))+ guides(pch = FALSE) 
+
+```
+
+
+
+
+```{r splsda_female_wt, echo = FALSE,fig.show='hold', fig.cap ='Identification of OTU signatures associated with Housing type in Female WT using sPLS-DA',  out.width='.6\\linewidth', fig.pos="H"}
+p1
+```
+
+
+
+```{r splsda_female_wt_l, echo = FALSE, fig.cap ='Loadings of OTU signatures associated with Housing type in Female WT',  out.width='40%', fig.pos="H",fig.show='hold', fig.ncol=2, fig.height=10, fig.width=8}
+comp1<-plotLoadings(splsda.female_wt, comp = 1, title = 'Loadings-comp 1', plot = FALSE,
+             contrib = 'max', method = 'median',  size.title=1)
+comp2<-plotLoadings(splsda.female_wt, comp = 2, title = 'Loadings-comp 2', plot = FALSE,
+             contrib = 'max', method = 'median',  size.title=1, ndisplay = 35)
+myplotLoading(comp1,name.var,"")
+myplotLoading(comp2,name.var,"")
+```
+
+
+## Male- HD
+
+```{r echo= FALSE}
+male_hd.16S= Data.16S.filter.male$indiv%>%filter( Genotype=="HD")
+Y=male_hd.16S$Housing
+#summary(Y)
+X=Data.16S.filter.male$filtered_male_data[rownames(male_hd.16S),]
+#dim(X)
+
+
+set.seed(2543)
+tune.splsda.male_hd <-  tune.splsda(X, Y, ncomp = 3, logratio = 'CLR', validation = 'Mfold', folds = 5, 
+                                      progressBar = FALSE, test.keepX = seq(5,100,5),dist = 'max.dist', measure = "BER",
+                                      nrepeat = 10)
+ncomp <- 2
+select.keepX <- tune.splsda.male_hd$choice.keepX[1:ncomp]  # optimal number of variables to select
+#select.keepX
+#plot(tune.splsda.female_hd, col = color.jet(3))
+splsda.male_hd <- splsda(X, Y, logratio = 'CLR', ncomp = ncomp, keepX = select.keepX) 
+```
+
+
+```{r,echo=FALSE,fig.show='hide'}
+a<-plotIndiv(splsda.male_hd,
+             group = male_hd.16S$Housing,
+             ind.names = FALSE, 
+             ellipse = TRUE, legend = TRUE,
+             title = 'Comp 1 & 2',
+             size.xlabel = rel(1.5),
+             size.ylabel = rel(1.5),
+             size.axis = rel(1),
+             size.legend = rel(1.1),
+             size.legend.title = rel(0), style = "ggplot2")
+b <- a$graph
+p1<-b+scale_color_manual(breaks=c("SH","EE","EX"), values = c("#388ECC","#F68B33","#C2C2C2"))+
+  labs(color = "Group")+ scale_shape_manual(values = c(2, 3,1))+ guides(pch = FALSE) 
+
+
+```
+
+```{r splsda_male_hd, echo = FALSE,fig.show='hold', fig.cap ='Identification of OTU signatures associated with Housing type in Male HD using sPLS-DA',  out.width='.6\\linewidth', fig.pos="H"}
+p1
+```
+
+
+
+```{r splsda_male_hd_l, echo = FALSE, fig.cap ='Loadings of OTU signatures associated with Housing type in Male HD',  out.width='40%', fig.pos="H",fig.show='hold', fig.ncol=2}
+name.var<-Data.16S.filter.male$taxonomy.male[,c(4,5)]
+#otu_names[is.na(otu_names)] <- "X"
+#name.var<-paste(rownames(otu_names),"(",otu_names$Family,"_",otu_names$Genus,"_",otu_names$Species,")")
+comp1<-plotLoadings(splsda.male_hd, comp = 1, title = 'Loadings-comp 1', 
+             contrib = 'max', method = 'median', plot = FALSE, size.title=1)
+comp2<-plotLoadings(splsda.male_hd, comp = 2, title = 'Loadings-comp 2', 
+             contrib = 'max', method = 'median',  plot = FALSE, size.title=1)
+myplotLoading(comp1,name.var,"",palette = c("#388ECC","#C2C2C2"))
+myplotLoading(comp2,name.var,"")
+```
+
+## Male- WT
+
+```{r echo= FALSE}
+male_wt.16S= Data.16S.filter.male$indiv%>%filter( Genotype=="WT")
+Y=male_wt.16S$Housing
+#summary(Y)
+X=Data.16S.filter.male$filtered_male_data[rownames(male_wt.16S),]
+#dim(X)
+
+
+set.seed(2543)
+tune.splsda.male_wt <-  tune.splsda(X, Y, ncomp = 3, logratio = 'CLR', validation = 'Mfold', folds = 5, 
+                                      progressBar = FALSE, test.keepX = seq(5,100,5),dist = 'max.dist', measure = "BER",
+                                      nrepeat = 10)
+ncomp <- 2
+select.keepX <- tune.splsda.male_wt$choice.keepX[1:ncomp]  # optimal number of variables to select
+#select.keepX
+#plot(tune.splsda.male_wt, col = color.jet(3))
+splsda.male_wt <- splsda(X, Y, logratio = 'CLR', ncomp = ncomp, keepX = select.keepX) 
+```
+
+```{r,echo=FALSE,fig.show='hide'}
+a<-plotIndiv(splsda.male_wt,
+             group = male_wt.16S$Housing,
+             ind.names = FALSE, 
+             ellipse = TRUE, legend = TRUE,
+             title = 'Comp 1 & 2',
+             size.xlabel = rel(1.5),
+             size.ylabel = rel(1.5),
+             size.axis = rel(1),
+             size.legend = rel(1.1),
+             size.legend.title = rel(0), style = "ggplot2")
+b <- a$graph
+p1<-b+scale_color_manual(breaks=c("SH","EE","EX"), values = c("#388ECC","#F68B33","#C2C2C2"))+
+  labs(color = "Group")+ scale_shape_manual(values = c(2, 3,1))+ guides(pch = FALSE) 
+```
+
+```{r splsda_male_wt, echo = FALSE,fig.show='hold', fig.cap ='Identification of OTU signatures associated with Housing type in Male WT using sPLS-DA',  out.width='.8\\linewidth', fig.pos="H"}
+p1
+```
+
+
+
+```{r splsda_male_wt_l, echo = FALSE, fig.cap ='Loadings of OTU signatures associated with Housing type in Male WT',  out.width='40%', fig.pos="H",fig.show='hold', fig.ncol=2, fig.height=10, fig.width=8}
+comp1<-plotLoadings(splsda.male_wt, comp = 1, title = 'Loadings-comp 1', 
+             contrib = 'max', method = 'median', plot=FALSE, size.title=1, ndisplay = 40)
+comp2<-plotLoadings(splsda.male_wt, comp = 2, title = 'Loadings-comp 2', 
+             contrib = 'max', method ='median', plot=FALSE, size.title=1, ndisplay = 30)
+myplotLoading(comp1,name.var,"")
+myplotLoading(comp2,name.var,"")
+```
+
+
+\textbf{Overall Error Rate (Mahalanobis distance)}
+```{r echo=FALSE}
+
+perf.plsda.female_hd <- perf(splsda.female_hd, validation = "Mfold", folds = 5, 
+                         progressBar = FALSE, auc = TRUE, nrepeat = 10) 
+error<-perf.plsda.female_hd$error.rate$overall[2,3]
+sd<-perf.plsda.female_hd$error.rate.sd$overall[2,3]
+Female_HD<-c(Error=error, SD=sd)
+
+perf.plsda.female_wt <- perf(splsda.female_wt, validation = "Mfold", folds = 5, 
+                         progressBar = FALSE, auc = TRUE, nrepeat = 10) 
+error<-perf.plsda.female_wt$error.rate$overall[2,3]
+sd<-perf.plsda.female_wt$error.rate.sd$overall[2,3]
+Female_WT<-c(Error=error, SD=sd)
+
+perf.plsda.male_hd <- perf(splsda.male_hd, validation = "Mfold", folds = 5, 
+                         progressBar = FALSE, auc = TRUE, nrepeat = 10)
+error<-perf.plsda.male_hd$error.rate$overall[2,3]
+sd<-perf.plsda.male_hd$error.rate.sd$overall[2,3]
+Male_HD<-c(Error=error, SD=sd)
+
+perf.plsda.male_wt <- perf(splsda.male_wt, validation = "Mfold", folds = 5, 
+                         progressBar = FALSE, auc = TRUE, nrepeat = 10)
+error<-perf.plsda.male_wt$error.rate$overall[2,3]
+sd<-perf.plsda.male_wt$error.rate.sd$overall[2,3]
+Male_WT<-c(Error=error, SD=sd)
+
+knitr::kable(rbind(Female_HD,Female_WT,Male_HD,Male_WT))
+```
+
+\textbf{Error Rate by class (Mahalanobis distance)}
+```{r echo=FALSE}
+
+Female_HD<-perf.plsda.female_hd$error.rate.class$mahalanobis.dist[,2]
+Female_WT<-perf.plsda.female_wt$error.rate.class$mahalanobis.dist[,2]
+Male_HD<-perf.plsda.male_hd$error.rate.class$mahalanobis.dist[,2]
+Male_WT<-perf.plsda.male_wt$error.rate.class$max.dist[,2]
+knitr::kable(rbind(Female_HD,Female_WT,Male_HD,Male_WT))
+```
+
+
+# LMM for OTUs among Females and Males
+```{r  echo = FALSE}
+clr.female.data<-logratio.transfo(X = filterOTU_16S.female.pca$filter.data.raw, logratio = 'CLR')
+df.female.clr<-cbind(filterOTU_16S.female.pca$indiv,data.frame(clr.female.data[,]))
+
+clr.male.data<-logratio.transfo(X = filterOTU_16S.male.pca$filter.data.raw, logratio = 'CLR')
+df.male.clr<-cbind(filterOTU_16S.male.pca$indiv,data.frame(clr.male.data[,]))
+
+# Write the first data set in a new workbook
+OTU_f<-data.frame(row.names =NULL, cbind(OTU=rownames(filterOTU_16S.female.pca$filter.taxonomy),filterOTU_16S.female.pca$filter.taxonomy))
+OTU_m<-data.frame(row.names = NULL, cbind(OTU=rownames(filterOTU_16S.male.pca$filter.taxonomy),filterOTU_16S.male.pca$filter.taxonomy))
+write.xlsx(unique(rbind(OTU_f, OTU_m)), file="Result.xlsx",
+      sheetName="Taxonomy", append=FALSE, row.names=FALSE)
+write.xlsx(df.female.clr, file="Result.xlsx", sheetName="Female_data_clr", append=TRUE)
+write.xlsx(df.male.clr, file="Result.xlsx", sheetName="Male_data_clr", append=TRUE)
+```
+
+
+
+- Results of these univariate analysis are saved in the "Results.xlsx" file.
+
+
+```{r, echo=FALSE}
+dep_vars.fe <-grep("OTU_", colnames(df.female.clr), value = T)
+p_val.fe<-lapply(dep_vars.fe, function(r) {
+  f <- formula(paste(r, "Genotype + Housing+ Genotype:Housing", sep = "~"))
+  m <- lme(fixed = f, random = ~ 1 |Box, data = df.female.clr)
+  m$call$fixed <- f
+  round(summary(m)$tTable[2:6,5],4)})
+
+Matrix_pval.fe <- matrix(unlist(p_val.fe), ncol = 5, byrow = TRUE)
+rownames(Matrix_pval.fe)<-dep_vars.fe
+colnames(Matrix_pval.fe)<-c("P-value (HD)", "P-value (EE)", "P-value (EX)", "P-value (HD*EE)", "P-value (HD*EX)")
+
+Matrix_fdr.fe<-apply(Matrix_pval.fe, 2, function(x) p.adjust(x, method="BH"))
+colnames(Matrix_fdr.fe)<-c("Adj P-value (HD)", "Adj P-value (EE)", "Adj P-value (EX)", "Adj P-value (HD*EE)", "Adj P-value (HD*EX)")
+female.lmm<-data.frame(Matrix_fdr.fe)
+```
+
+
+
+
+```{r, echo=FALSE}
+dep_vars <-grep("OTU_", colnames(df.male.clr), value = T)
+p_val<-lapply(dep_vars, function(r) {
+  f <- formula(paste(r, "Genotype + Housing+ Genotype:Housing", sep = "~"))
+  m <- lme(fixed = f, random = ~ 1 |Box, data = df.male.clr)
+  m$call$fixed <- f
+  round(summary(m)$tTable[2:6,5],4)})
+
+Matrix_pval <- matrix(unlist(p_val), ncol = 5, byrow = TRUE)
+rownames(Matrix_pval)<-dep_vars
+colnames(Matrix_pval)<-c("P-value (HD)", "P-value (EE)", "P-value (EX)", "P-value (HD*EE)", "P-value (HD*EX)")
+Matrix_fdr.ma<-apply(Matrix_pval, 2, function(x) p.adjust(x, method="BH"))
+colnames(Matrix_fdr.ma)<-c("Adj P-value (HD)", "Adj P-value (EE)", "Adj P-value (EX)", "Adj P-value (HD*EE)", "Adj P-value (HD*EX)")
+male.lmm<-data.frame(Matrix_fdr.ma)
+
+# Add a second data set in a new worksheet
+write.xlsx(female.lmm, file="Result.xlsx", sheetName="LMM_Female", append=TRUE)
+# Add a third data set
+write.xlsx(male.lmm, file="Result.xlsx", sheetName="LMM_Male", 
+           append=TRUE)
+
+write.xlsx(splsda.female_hd$loadings$X, file="Result.xlsx", sheetName="Female_HD_Loadings", append=TRUE)
+write.xlsx(splsda.female_wt$loadings$X, file="Result.xlsx", sheetName="Female_WT_Loadings", append=TRUE)
+write.xlsx(splsda.male_hd$loadings$X, file="Result.xlsx", sheetName="Male_HD_Loadings", append=TRUE)
+write.xlsx(splsda.male_wt$loadings$X, file="Result.xlsx", sheetName="Male_WT_Loadings", append=TRUE)
+
+```
+
+# Information about the used R session
+
+```{r}
+sessionInfo()
+```
