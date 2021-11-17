@@ -613,32 +613,23 @@ kbl(x$contrasts, longtable=T, linesep = "", booktabs = T, digits = c(4,4,4,4,4,4
 
 
 ## ---- echo=FALSE----------------------------------------------------------------
-x<-emmeans(X10, pairwise ~ Genotype*Housing*Sex)
+x<-emmeans(X10, pairwise ~ Genotype*Housing*Sex| Week, 
+        at = list(Week = c(6:11)))
 df<-data.frame(x$contrasts)
 that_cell<-df$p.value<0.05
-kbl(x$contrasts, longtable=T, linesep = "", booktabs = T, digits = c(4,4,4,4,4,4),format = "latex") %>%
+kbl(x$contrasts, longtable=T, linesep = "", booktabs = T, digits = c(4,4,4,4,4,4),format = "latex", caption="Post-hoc results for sex, genotype and housing in water intake variable") %>%
   kable_styling(latex_options = c("repeat_header"))%>%
-column_spec(6,bold = that_cell,
-            color =  ifelse(that_cell,"red","black"))%>%
-column_spec(1,color =  ifelse(that_cell,"red","black"))
+  column_spec(7,bold = that_cell,
+              color =  ifelse(that_cell,"red","black"))%>%
+  column_spec(1,color =  ifelse(that_cell,"red","black"))
 
 
 ## ---- echo=FALSE----------------------------------------------------------------
-x<-emmeans(X11, pairwise ~ Genotype*Housing*Sex)
+x<-emmeans(X11, pairwise ~ Genotype*Housing*Sex|Week,
+           at = list(Week = c(6:12)))
 df<-data.frame(x$contrasts)
 that_cell<-df$p.value<0.05
-kbl(x$contrasts, longtable=T, linesep = "", booktabs = T, digits = c(4,4,4,4,4,4),format = "latex") %>%
-  kable_styling(latex_options = c("repeat_header"))%>%
-column_spec(6,bold = that_cell,
-            color =  ifelse(that_cell,"red","black"))%>%
-column_spec(1,color =  ifelse(that_cell,"red","black"))
-
-
-## ---- echo=FALSE----------------------------------------------------------------
-x<-emmeans(X12, pairwise ~ Genotype*Housing|Sex)
-df<-data.frame(x$contrasts)
-that_cell<-df$p.value<0.05
-kbl(x$contrasts, longtable=T, linesep = "", booktabs = T, digits = c(4,4,4,4,4,4),format = "latex") %>%
+kbl(x$contrasts, longtable=T, linesep = "", booktabs = T, digits = c(4,4,4,4,4,4),format = "latex", caption="Post-hoc results for sex, genotype and housing in weight variable") %>%
   kable_styling(latex_options = c("repeat_header"))%>%
 column_spec(7,bold = that_cell,
             color =  ifelse(that_cell,"red","black"))%>%
@@ -646,15 +637,27 @@ column_spec(1,color =  ifelse(that_cell,"red","black"))
 
 
 ## ---- echo=FALSE----------------------------------------------------------------
-x<-emmeans(mod, pairwise ~ Genotype*Sex|Housing)
+x<-emmeans(X12, pairwise ~ Genotype*Housing|Sex*Week,
+           at = list(Week = c(6:12)))
 df<-data.frame(x$contrasts)
 that_cell<-df$p.value<0.05
-kbl(x$contrasts, longtable=T, linesep = "", booktabs = T, digits = c(4,4,4,4,4,4),format = "latex") %>%
+kbl(x$contrasts, longtable=T, linesep = "", booktabs = T, digits = c(4,4,4,4,4,4),format = "latex", caption="Post-hoc results for genotype and housing given sex type in rotarod variable") %>%
   kable_styling(latex_options = c("repeat_header"))%>%
-column_spec(7,bold = that_cell,
+column_spec(8,bold = that_cell,
             color =  ifelse(that_cell,"red","black"))%>%
 column_spec(1,color =  ifelse(that_cell,"red","black"))
 
+
+## ---- echo=FALSE----------------------------------------------------------------
+x<-emmeans(X13, pairwise ~ Genotype*Sex|Housing*Week,
+           at = list(Week = c(6:12)))
+df<-data.frame(x$contrasts)
+that_cell<-df$p.value<0.05
+kbl(x$contrasts, longtable=T, linesep = "", booktabs = T, digits = c(4,4,4,4,4,4),format = "latex", caption="Post-hoc results for sex and genotype given housing type in variable clasping score") %>%
+  kable_styling(latex_options = c("repeat_header"))%>%
+column_spec(8,bold = that_cell,
+            color =  ifelse(that_cell,"red","black"))%>%
+column_spec(1,color =  ifelse(that_cell,"red","black"))
 
 ## ----refmgr references, results="asis", echo=FALSE------------------------------
 # Print
