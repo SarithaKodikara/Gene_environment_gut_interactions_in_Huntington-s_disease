@@ -1,6 +1,6 @@
 This vignette provides all reproducible codes for our article:
 
-# Gene-environment-gut interactions in Huntington's disease mice are associated with environmental modulation of the gut microbiome
+# Huntington’s disease mice present sexual dimorphic response to fecal microbiota transplant with females showing promising cognitive improvement 
 
 Carolina Gubert, Chloe J. Love, Saritha Kodikara, Jamie Jie Mei Liew, Thibault Renoir, Kim-Anh Lê Cao and Anthony J.  Hannan 
 
