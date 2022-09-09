@@ -14,3 +14,5 @@ signatures that discriminate the housing conditions. Our findings suggest a prom
 extended EE and EX exposure in HD mice. 
 
 **Keywords:** gut dysbiosis; gut microbiota; gut microbiome; Huntington's disease, environmental enrichment, exercise, R6/1
+
+https://zenodo.org/badge/416519533.svg
